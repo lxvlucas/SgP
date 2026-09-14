@@ -12,6 +12,7 @@ import com.SgP.demo.models.Usuario;
 import com.SgP.demo.repositories.ProjetoRepository;
 import com.SgP.demo.repositories.TarefaRepository;
 import com.SgP.demo.repositories.UsuarioRepository;
+import com.SgP.demo.services.TarefaService;
 
 @Configuration
 public class DataLoader {
@@ -20,25 +21,27 @@ public class DataLoader {
     public CommandLineRunner carregarDados(
             UsuarioRepository usuarioRepository,
             ProjetoRepository projetoRepository,
-            TarefaRepository tarefaRepository) {
+            TarefaRepository tarefaRepository,
+            TarefaService tarefaService) {
         
         return args -> {
+            boolean primeiraExecucao = usuarioRepository.count() == 0 && projetoRepository.count() == 0;
             // ==========================================
             // 1. CRIAÇÃO DOS USUÁRIOS (Verificando se já existem)
             // ==========================================
-            Usuario gestor = usuarioRepository.findByEmailAndSenha("gestor@sgp.com", "123456");
+            Usuario gestor = usuarioRepository.findByEmail("gestor@sgp.com");
             if (gestor == null) {
                 gestor = new Usuario("Gestor Chefão", "gestor@sgp.com", "123456", "GESTOR");
                 gestor = usuarioRepository.save(gestor);
             }
 
-            Usuario joao = usuarioRepository.findByEmailAndSenha("joao@sgp.com", "123456");
+            Usuario joao = usuarioRepository.findByEmail("joao@sgp.com");
             if (joao == null) {
                 joao = new Usuario("João Operário", "joao@sgp.com", "123456", "COLABORADOR");
                 joao = usuarioRepository.save(joao);
             }
 
-            Usuario pedro = usuarioRepository.findByEmailAndSenha("pedro@sgp.com", "123456");
+            Usuario pedro = usuarioRepository.findByEmail("pedro@sgp.com");
             if (pedro == null) {
                 pedro = new Usuario("Pedro Novato", "pedro@sgp.com", "123456", "COLABORADOR");
                 pedro = usuarioRepository.save(pedro);
@@ -47,8 +50,8 @@ public class DataLoader {
             // ==========================================
             // 2. CRIAÇÃO DOS PROJETOS E TAREFAS
             // ==========================================
-            // Só cria se o banco de projetos estiver vazio para não duplicar
-            if (projetoRepository.count() == 0) {
+            // Não recria os exemplos quando o usuário exclui todos os projetos.
+            if (primeiraExecucao) {
                 
                 // --- PROJETO 1: JOÃO E PEDRO JUNTOS ---
                 Projeto proj1 = new Projeto();
@@ -107,7 +110,11 @@ public class DataLoader {
                 t4.setStatus("EM_ANDAMENTO");
                 tarefaRepository.save(t4);
 
-                System.out.println("✅ Massa de testes (Projetos e Tarefas) carregada com sucesso no PostgreSQL!");
+                System.out.println("Dados iniciais de projetos e tarefas carregados com sucesso.");
+            }
+            // Corrige também o progresso de projetos gravados pelo fluxo antigo.
+            for (Projeto projeto : projetoRepository.findAll()) {
+                tarefaService.recalcularProgressoProjeto(projeto.getId());
             }
         };
     }

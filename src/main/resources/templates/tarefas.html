@@ -43,12 +43,12 @@
                 <td th:text="${tarefa.responsavel != null ? tarefa.responsavel.nome : 'Sem responsável'}">Nome do Responsável</td>
                 <td>
                     <span class="badge" 
-                          th:classappend="${tarefa.status == 'PENDENTE' ? 'bg-warning text-dark' : (tarefa.status == 'AGUARDANDO_VALIDACAO' ? 'bg-info text-dark' : 'bg-success')}"
+                          th:classappend="${tarefa.status == 'CONCLUIDA' ? 'bg-success' : (tarefa.status == 'AGUARDANDO_VALIDACAO' ? 'bg-info text-dark' : 'bg-warning text-dark')}"
                           th:text="${tarefa.status}">PENDENTE
                     </span>
                 </td>
                 <td class="text-center">
-                    <form th:action="@{/tarefa/{id}/executar(id=${tarefa.id})}" method="post" class="d-inline" th:if="${tarefa.status == 'PENDENTE'}">
+                    <form th:action="@{/tarefa/{id}/executar(id=${tarefa.id})}" method="post" class="d-inline" th:if="${tarefa.podeExecutar(session.usuarioLogado)}">
                         <button type="submit" class="btn btn-sm btn-primary">Registrar Execução</button>
                     </form>
                     

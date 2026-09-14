@@ -27,7 +27,7 @@ public class Tarefa {
 	
 	private Double progresso = 0.0;
 	
-	private String status = "Pendente";
+	private String status = "PENDENTE";
 	
 	@ManyToOne
 	@JoinColumn(name = "responsavel_id")
@@ -98,11 +98,30 @@ public class Tarefa {
 	}
 
 	public String getStatus() {
-		return status;
+		return normalizarStatus(status);
 	}
 
 	public void setStatus(String status) {
-		this.status = status;
+		this.status = normalizarStatus(status);
+	}
+
+	// Aceita também os valores já gravados pelas versões anteriores.
+	private static String normalizarStatus(String status) {
+		if (status == null) return "PENDENTE";
+		String valor = java.text.Normalizer.normalize(status.trim(), java.text.Normalizer.Form.NFD)
+				.replaceAll("\\p{M}", "").toUpperCase(java.util.Locale.ROOT).replace(' ', '_');
+		return switch (valor) {
+			case "", "PENDENTE" -> "PENDENTE";
+			case "EM_VALIDACAO", "AGUARDANDO_VALIDACAO" -> "AGUARDANDO_VALIDACAO";
+			case "VALIDADA", "CONCLUIDA" -> "CONCLUIDA";
+			default -> valor;
+		};
+	}
+
+	public boolean podeExecutar(Usuario usuario) {
+		return usuario != null && ("PENDENTE".equals(getStatus()) || "EM_ANDAMENTO".equals(getStatus()))
+				&& ("GESTOR".equals(usuario.getFuncao()) || responsavel == null
+						|| responsavel.getId().equals(usuario.getId()));
 	}
 
 	public Projeto getProjeto() {

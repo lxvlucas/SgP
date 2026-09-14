@@ -41,7 +41,7 @@ public class Projeto {
         this.colaboradores = colaboradores; 
     }
 	@OneToMany(mappedBy = "projeto", cascade = CascadeType.ALL)
-	private List<Tarefa> tarefas;
+	private List<Tarefa> tarefas = new ArrayList<>();
 	
 	public Projeto() {
 		

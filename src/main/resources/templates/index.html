@@ -50,13 +50,13 @@
                             </div>
                         </td>
                         <td class="text-end">
-                            <a th:href="@{/projeto/{id}(id=${projeto.id})}" class="btn btn-sm btn-primary">Ver Tarefas</a>
-                            <a th:href="@{/projeto/{id}/excluir(id=${projeto.id})}"
-                               class="btn btn-sm btn-danger ms-1"
+                            <a th:href="@{/projeto/{id}/tarefas(id=${projeto.id})}" class="btn btn-sm btn-primary">Ver Tarefas</a>
+                            <form th:action="@{/projeto/{id}/excluir(id=${projeto.id})}" method="post"
+                               class="d-inline"
                                th:if="${session.usuarioLogado.funcao == 'GESTOR'}"
-                               onclick="return confirm('Excluir este projeto?')">
-                               Excluir
-                            </a>
+                               onsubmit="return confirm('Excluir este projeto e suas tarefas?')">
+                               <button type="submit" class="btn btn-sm btn-danger ms-1">Excluir</button>
+                            </form>
                         </td>
                     </tr>
                     <tr th:if="${#lists.isEmpty(projetos)}">
