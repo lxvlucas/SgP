@@ -1,9 +1,9 @@
 package com.SgP.demo.controllers;
 
-import com.SgP.demo.models.Projeto;
+import com.SgP.demo.exceptions.DadosInvalidosException;
+import com.SgP.demo.forms.ProjetoForm;
 import com.SgP.demo.models.Usuario;
-import com.SgP.demo.repositories.ProjetoRepository;
-import jakarta.servlet.http.HttpSession;
+import com.SgP.demo.services.ProjetoService;
 import org.springframework.stereotype.Controller;
 import org.springframework.ui.Model;
 import org.springframework.validation.BindingResult;
@@ -12,9 +12,9 @@ import org.springframework.web.bind.annotation.*;
 
 @Controller
 public class ProjetoController {
-    private final ProjetoRepository projetos;
+    private final ProjetoService projetos;
 
-    public ProjetoController(ProjetoRepository projetos) {
+    public ProjetoController(ProjetoService projetos) {
         this.projetos = projetos;
     }
 
@@ -25,42 +25,34 @@ public class ProjetoController {
 
     @GetMapping("/")
     public String listarProjetos(Model model) {
-        model.addAttribute("projetos", projetos.findAll());
+        model.addAttribute("projetos", projetos.listar());
         return "index";
     }
 
     @GetMapping("/projeto/novo")
-    public String formNovoProjeto(Model model, HttpSession session) {
-        if (!gestor(session)) return "redirect:/";
-        model.addAttribute("projeto", new Projeto());
+    public String formNovoProjeto(Model model, @SessionAttribute("usuarioLogado") Usuario usuario) {
+        if (!usuario.isGestor()) return "redirect:/";
+        model.addAttribute("projeto", new ProjetoForm());
         return "novo-projeto";
     }
 
     @PostMapping("/projeto/salvar")
-    public String salvarProjeto(@ModelAttribute Projeto projeto, BindingResult erros, HttpSession session) {
-        if (!gestor(session)) return "redirect:/";
-        if (!textoValido(projeto.getNome()) || !textoValido(projeto.getDescricao())) {
-            erros.reject("texto", "Preencha nome e descrição com até 255 caracteres cada.");
-        }
+    public String salvarProjeto(@ModelAttribute("projeto") ProjetoForm formulario, BindingResult erros,
+            @SessionAttribute("usuarioLogado") Usuario usuario) {
+        if (!usuario.isGestor()) return "redirect:/";
         if (erros.hasErrors()) return "novo-projeto";
-        projeto.setNome(projeto.getNome().trim());
-        projeto.setDescricao(projeto.getDescricao().trim());
-        projetos.save(projeto);
+        try {
+            projetos.criar(formulario, usuario);
+        } catch (DadosInvalidosException erro) {
+            erros.reject(erro.getCodigo(), erro.getMessage());
+            return "novo-projeto";
+        }
         return "redirect:/";
     }
 
     @PostMapping("/projeto/{id}/excluir")
-    public String excluirProjeto(@PathVariable Long id, HttpSession session) {
-        if (gestor(session)) projetos.findById(id).ifPresent(projetos::delete);
+    public String excluirProjeto(@PathVariable Long id, @SessionAttribute("usuarioLogado") Usuario usuario) {
+        if (usuario.isGestor()) projetos.excluir(id, usuario);
         return "redirect:/";
-    }
-
-    private boolean gestor(HttpSession session) {
-        Usuario usuario = (Usuario) session.getAttribute("usuarioLogado");
-        return usuario != null && "GESTOR".equals(usuario.getFuncao());
-    }
-
-    private boolean textoValido(String texto) {
-        return texto != null && !texto.isBlank() && texto.trim().length() <= 255;
     }
 }

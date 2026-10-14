@@ -1,5 +1,7 @@
 package com.SgP.demo.services;
 
+import com.SgP.demo.exceptions.RegistroNaoEncontradoException;
+import com.SgP.demo.forms.TarefaForm;
 import com.SgP.demo.models.Projeto;
 import com.SgP.demo.models.Tarefa;
 import com.SgP.demo.models.Usuario;
@@ -13,67 +15,69 @@ import org.springframework.transaction.annotation.Transactional;
 public class TarefaService {
     private final TarefaRepository tarefas;
     private final ProjetoRepository projetos;
+    private final UsuarioService usuarios;
+    private final CalculadoraProgresso progresso;
 
-    public TarefaService(TarefaRepository tarefas, ProjetoRepository projetos) {
+    public TarefaService(TarefaRepository tarefas, ProjetoRepository projetos,
+            UsuarioService usuarios, CalculadoraProgresso progresso) {
         this.tarefas = tarefas;
         this.projetos = projetos;
+        this.usuarios = usuarios;
+        this.progresso = progresso;
     }
 
-    public void salvar(Tarefa tarefa, Long projetoId) {
-        Projeto projeto = projetos.findById(projetoId).orElseThrow();
-        // Carrega a coleção antes do INSERT para não duplicar a tarefa no cálculo.
-        var lista = projeto.getTarefas();
-        lista.size();
-        tarefa.setId(null);
-        tarefa.setProjeto(projeto);
-        tarefa.setStatus("PENDENTE");
-        tarefa.setProgresso(0.0);
+    public Tarefa salvar(TarefaForm formulario, Long projetoId, Usuario autor) {
+        usuarios.exigirGestor(autor);
+        Projeto projeto = buscarProjetoParaAtualizacao(projetoId);
+        String titulo = ValidacaoCadastro.textoObrigatorio(formulario.getTitulo(), "título");
+        String descricao = ValidacaoCadastro.textoObrigatorio(formulario.getDescricao(), "descrição");
+        Usuario responsavel = usuarios.buscarColaborador(formulario.getResponsavelId());
+        progresso.validarNovoPeso(formulario.getPesoPercentual(), tarefas.findByProjetoIdOrderByIdAsc(projetoId));
+
+        Tarefa tarefa = new Tarefa();
+        tarefa.setTitulo(titulo);
+        tarefa.setDescricao(descricao);
+        tarefa.setPrazo(formulario.getPrazo());
+        tarefa.setPesoPercentual(formulario.getPesoPercentual());
+        tarefa.setResponsavel(responsavel);
+        projeto.adicionarTarefa(tarefa);
         tarefas.save(tarefa);
-        lista.add(tarefa);
-        if (tarefa.getResponsavel() != null && projeto.getColaboradores().stream()
-                .noneMatch(u -> u.getId().equals(tarefa.getResponsavel().getId()))) {
-            projeto.getColaboradores().add(tarefa.getResponsavel());
-        }
-        recalcularProgressoProjeto(projetoId);
+        atualizarProgresso(projeto);
+        return tarefa;
     }
 
     public Long registrarExecucao(Long tarefaId, Usuario usuario) {
+        Projeto projeto = buscarProjetoDaTarefaParaAtualizacao(tarefaId);
+        if (projeto == null) return null;
         Tarefa tarefa = tarefas.findById(tarefaId).orElse(null);
         if (tarefa == null) return null;
-        if (tarefa.podeExecutar(usuario)) {
-            tarefa.setStatus("AGUARDANDO_VALIDACAO");
-            tarefa.setProgresso(100.0);
-        }
-        return tarefa.getProjeto().getId();
+        tarefa.registrarExecucao(usuarios.buscarUsuarioAtual(usuario));
+        return projeto.getId();
     }
 
     public Long validarTarefa(Long tarefaId, Usuario usuario) {
+        Projeto projeto = buscarProjetoDaTarefaParaAtualizacao(tarefaId);
+        if (projeto == null) return null;
         Tarefa tarefa = tarefas.findById(tarefaId).orElse(null);
         if (tarefa == null) return null;
-        if (usuario != null && "GESTOR".equals(usuario.getFuncao())
-                && "AGUARDANDO_VALIDACAO".equals(tarefa.getStatus())) {
-            tarefa.setStatus("CONCLUIDA");
-            tarefa.setProgresso(100.0);
-            recalcularProgressoProjeto(tarefa.getProjeto().getId());
-        }
-        return tarefa.getProjeto().getId();
+        if (tarefa.validar(usuarios.buscarUsuarioAtual(usuario))) atualizarProgresso(projeto);
+        return projeto.getId();
     }
 
     public void recalcularProgressoProjeto(Long projetoId) {
-        Projeto projeto = projetos.findById(projetoId).orElseThrow();
-        var lista = projeto.getTarefas();
-        double pesoInformado = lista.stream().filter(t -> pesoValido(t.getPesoPercentual()))
-                .mapToDouble(Tarefa::getPesoPercentual).sum();
-        long semPeso = lista.stream().filter(t -> !pesoValido(t.getPesoPercentual())).count();
-        // Tarefas antigas não têm peso: dividem igualmente o percentual restante.
-        double pesoAutomatico = semPeso == 0 ? 0 : Math.max(0, 100 - pesoInformado) / semPeso;
-        double total = lista.stream().filter(t -> "CONCLUIDA".equals(t.getStatus()))
-                .mapToDouble(t -> pesoValido(t.getPesoPercentual()) ? t.getPesoPercentual() : pesoAutomatico)
-                .sum();
-        projeto.setPercentualConclusao(Math.round(Math.min(100, total) * 100.0) / 100.0);
+        atualizarProgresso(buscarProjetoParaAtualizacao(projetoId));
     }
 
-    private boolean pesoValido(Double peso) {
-        return peso != null && Double.isFinite(peso) && peso > 0;
+    private Projeto buscarProjetoParaAtualizacao(Long projetoId) {
+        return projetos.buscarParaAtualizacao(projetoId)
+                .orElseThrow(() -> new RegistroNaoEncontradoException("Projeto não encontrado."));
+    }
+
+    private Projeto buscarProjetoDaTarefaParaAtualizacao(Long tarefaId) {
+        return tarefas.buscarProjetoId(tarefaId).flatMap(projetos::buscarParaAtualizacao).orElse(null);
+    }
+
+    private void atualizarProgresso(Projeto projeto) {
+        projeto.setPercentualConclusao(progresso.calcular(tarefas.findByProjetoIdOrderByIdAsc(projeto.getId())));
     }
 }

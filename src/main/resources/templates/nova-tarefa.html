@@ -16,7 +16,7 @@
             <form th:action="@{'/projeto/' + ${projeto.id} + '/tarefa/salvar'}" th:object="${tarefa}" method="post">
                 <div class="alert alert-danger" th:if="${#fields.hasAnyErrors()}">
                     <p class="mb-1" th:each="erro : ${#fields.globalErrors()}" th:text="${erro}"></p>
-                    <p class="mb-0" th:if="${#fields.hasErrors('prazo') or #fields.hasErrors('pesoPercentual')}">Confira o formato da data e do peso informado.</p>
+                    <p class="mb-0" th:if="${#fields.hasErrors('prazo') or #fields.hasErrors('pesoPercentual') or #fields.hasErrors('responsavelId')}">Confira o formato da data, do peso e do responsável informado.</p>
                 </div>
                 
                 <div class="mb-3">
@@ -31,10 +31,10 @@
 
                 <div class="mb-3">
                     <label for="responsavelId" class="form-label">Responsável</label>
-                    <select id="responsavelId" name="responsavelId" class="form-select">
+                    <select th:field="*{responsavelId}" class="form-select">
                         <option value="">Sem responsável</option>
                         <option th:each="colaborador : ${colaboradores}" th:value="${colaborador.id}"
-                                th:text="${colaborador.nome}" th:selected="${colaborador.id == responsavelSelecionado}"></option>
+                                th:text="${colaborador.nome}"></option>
                     </select>
                 </div>
                 <div class="mb-3">

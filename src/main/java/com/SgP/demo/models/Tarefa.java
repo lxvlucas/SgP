@@ -2,8 +2,6 @@ package com.SgP.demo.models;
 
 import java.time.LocalDate;
 
-import org.springframework.format.annotation.DateTimeFormat;
-
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -21,7 +19,6 @@ public class Tarefa {
 	private String descricao;
 	
 
-	@DateTimeFormat(pattern = "yyyy-MM-dd")
 	private LocalDate prazo;
 	private Double pesoPercentual;
 	
@@ -120,9 +117,25 @@ public class Tarefa {
 
 	public boolean podeExecutar(Usuario usuario) {
 		return usuario != null && ("PENDENTE".equals(getStatus()) || "EM_ANDAMENTO".equals(getStatus()))
-				&& ("GESTOR".equals(usuario.getFuncao()) || responsavel == null
-						|| responsavel.getId().equals(usuario.getId()));
+				&& (usuario.isGestor() || responsavel == null
+						|| (responsavel.getId() != null && responsavel.getId().equals(usuario.getId())));
 	}
+
+    public boolean isConcluida() { return "CONCLUIDA".equals(getStatus()); }
+
+    public boolean registrarExecucao(Usuario usuario) {
+        if (!podeExecutar(usuario)) return false;
+        status = "AGUARDANDO_VALIDACAO";
+        progresso = 100.0;
+        return true;
+    }
+
+    public boolean validar(Usuario usuario) {
+        if (usuario == null || !usuario.isGestor() || !"AGUARDANDO_VALIDACAO".equals(getStatus())) return false;
+        status = "CONCLUIDA";
+        progresso = 100.0;
+        return true;
+    }
 
 	public Projeto getProjeto() {
 		return projeto;

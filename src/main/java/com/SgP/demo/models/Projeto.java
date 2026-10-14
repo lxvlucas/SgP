@@ -86,6 +86,16 @@ public class Projeto {
 	public void setTarefas(List<Tarefa> tarefas) {
 		this.tarefas = tarefas;
 	}
+
+    public void adicionarTarefa(Tarefa tarefa) {
+        tarefa.setProjeto(this);
+        if (!tarefas.contains(tarefa)) tarefas.add(tarefa);
+        Usuario responsavel = tarefa.getResponsavel();
+        if (responsavel != null && colaboradores.stream()
+                .noneMatch(u -> u.getId() != null && u.getId().equals(responsavel.getId()))) {
+            colaboradores.add(responsavel);
+        }
+    }
 	
 	
 }

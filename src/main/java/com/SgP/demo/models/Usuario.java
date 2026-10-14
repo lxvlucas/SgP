@@ -72,6 +72,10 @@ public class Usuario {
 	public void setFuncao(String funcao) {
 		this.funcao = funcao;
 	}
+
+    public boolean isGestor() { return "GESTOR".equals(funcao); }
+
+    public boolean isColaborador() { return "COLABORADOR".equals(funcao); }
 	
 	
 }

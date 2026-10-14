@@ -26,6 +26,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @SpringBootTest
+@org.springframework.test.context.ContextConfiguration(initializers = com.SgP.demo.support.PostgresTestInitializer.class)
 @AutoConfigureMockMvc
 @ActiveProfiles("test")
 @Transactional

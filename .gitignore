@@ -1,5 +1,13 @@
 # Compiled class files
 target/
+*.class
+
+# Credenciais locais e backups do banco
+.env
+.env.*
+!.env.example
+*.dump
+*.backup
 
 # IDE
 .idea/
@@ -30,3 +38,11 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Documentação de trabalho mantida apenas neste computador
+/HELP.md
+/IDEIAS_JAMBU.md
+/PLANEJAMENTO.md
+/PLANO_MVP.md
+/POSTGRESQL.md
+/TRANSFERENCIA_DESKTOP.md
